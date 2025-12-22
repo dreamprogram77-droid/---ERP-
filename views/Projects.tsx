@@ -50,8 +50,20 @@ import {
   RefreshCw,
   FileBarChart,
   Link as LinkIcon,
-  Trello
+  Trello,
+  Maximize2,
+  TrendingUp as TrendIcon
 } from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
 import { getProjectFinancialAnalysis, fetchExternalTasks } from '../services/geminiService';
 
 const mockProjects: Project[] = [
@@ -74,6 +86,14 @@ const mockProjects: Project[] = [
     repoUrl: 'https://github.com/tech-corp/delivery-app',
     cloudCost: 1200,
     totalHours: 420,
+    costHistory: [
+      { date: '2023-01', budget: 50000, actual: 42000 },
+      { date: '2023-02', budget: 50000, actual: 48000 },
+      { date: '2023-03', budget: 50000, actual: 55000 },
+      { date: '2023-04', budget: 50000, actual: 38000 },
+      { date: '2023-05', budget: 50000, actual: 45000 },
+      { date: '2023-06', budget: 50000, actual: 62000 },
+    ],
     milestones: [
       { id: 'm1', name: 'تصميم الهوية وتجربة المستخدم', dueDate: '2023-10-01', completed: true, cost: 20000 },
       { id: 'm2', name: 'إطلاق النسخة التجريبية (MVP)', dueDate: '2023-12-15', completed: false, cost: 80000 }
@@ -109,6 +129,11 @@ const mockProjects: Project[] = [
     repoUrl: 'https://github.com/tech-corp/wms-system',
     cloudCost: 2500,
     totalHours: 580,
+    costHistory: [
+      { date: '2023-01', budget: 40000, actual: 38000 },
+      { date: '2023-02', budget: 40000, actual: 42000 },
+      { date: '2023-03', budget: 40000, actual: 45000 },
+    ],
     milestones: [
       { id: 'm3', name: 'ربط مستشعرات IoT', dueDate: '2023-11-20', completed: true, cost: 40000 }
     ],
@@ -118,6 +143,126 @@ const mockProjects: Project[] = [
     ]
   }
 ];
+
+const ProjectFinancialChart = ({ history }: { history: any[] }) => {
+  const [timeframe, setTimeframe] = useState<'monthly' | 'quarterly'>('monthly');
+
+  const chartData = useMemo(() => {
+    if (timeframe === 'monthly') {
+      return history.map(item => ({
+        name: item.date,
+        'الميزانية المحددة': item.budget,
+        'التكلفة الفعلية': item.actual
+      }));
+    } else {
+      // Aggregate by quarter
+      const quarters: Record<string, { budget: number, actual: number }> = {};
+      history.forEach(item => {
+        const [year, month] = item.date.split('-');
+        const quarter = `Q${Math.ceil(parseInt(month) / 3)} ${year}`;
+        if (!quarters[quarter]) {
+          quarters[quarter] = { budget: 0, actual: 0 };
+        }
+        quarters[quarter].budget += item.budget;
+        quarters[quarter].actual += item.actual;
+      });
+      return Object.entries(quarters).map(([name, vals]) => ({
+        name,
+        'الميزانية المحددة': vals.budget,
+        'التكلفة الفعلية': vals.actual
+      }));
+    }
+  }, [history, timeframe]);
+
+  return (
+    <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+           <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+             <BarChart3 size={20} />
+           </div>
+           <div>
+             <h4 className="text-sm font-black text-slate-800 tracking-tight">تحليل التكلفة مقابل الميزانية</h4>
+             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">معدل الانحراف المالي التاريخي</p>
+           </div>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner shrink-0">
+          <button 
+            onClick={() => setTimeframe('monthly')}
+            className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${timeframe === 'monthly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            شهرياً
+          </button>
+          <button 
+            onClick={() => setTimeframe('quarterly')}
+            className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${timeframe === 'quarterly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            ربع سنوي
+          </button>
+        </div>
+      </div>
+
+      <div className="h-[280px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorBudget" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
+                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <XAxis 
+              dataKey="name" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} 
+              dy={10}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{fill: '#94a3b8', fontSize: 10}}
+              tickFormatter={(val) => `${val / 1000}k`}
+            />
+            <Tooltip 
+              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }}
+              itemStyle={{ padding: '2px 0' }}
+            />
+            <Legend 
+              verticalAlign="top" 
+              align="right" 
+              iconType="circle"
+              wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 'black', textTransform: 'uppercase' }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="الميزانية المحددة" 
+              stroke="#4f46e5" 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorBudget)" 
+              animationDuration={1500}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="التكلفة الفعلية" 
+              stroke="#f43f5e" 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorActual)" 
+              animationDuration={1500}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
 
 const ProjectCard = ({ project, onClick }: { project: Project; onClick: () => void; key?: any }) => {
   const isLowProfit = project.profit < (project.budget * 0.1);
@@ -358,7 +503,8 @@ const Projects = () => {
         team: ['1'],
         milestones: [],
         tasks: [],
-        resources: []
+        resources: [],
+        costHistory: []
       };
       setAllProjects([newProj, ...allProjects]);
     }
@@ -428,7 +574,7 @@ const Projects = () => {
       <div className="space-y-8 animate-in slide-in-from-left-4 duration-500 pb-12">
         <div className="flex items-center justify-between">
           <button onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-bold group">
-            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> العودة للوحة المشاريع
+            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> العودة لوحة المشاريع
           </button>
           <div className="flex gap-3">
              {selectedProject.connectedTool && (
@@ -541,6 +687,11 @@ const Projects = () => {
                  </div>
               </div>
            </div>
+        </div>
+
+        {/* Interactive Financial History Chart Section */}
+        <div className="grid grid-cols-1 gap-8">
+           <ProjectFinancialChart history={selectedProject.costHistory || []} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

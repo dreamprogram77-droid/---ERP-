@@ -35,6 +35,12 @@ export interface ProjectResource {
   requiredSkills: string[];
 }
 
+export interface CostHistoryItem {
+  date: string; // YYYY-MM
+  budget: number;
+  actual: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -57,6 +63,7 @@ export interface Project {
   milestones: Milestone[];
   tasks: Task[];
   resources: ProjectResource[];
+  costHistory: CostHistoryItem[];
   externalProjectId?: string;
   connectedTool?: 'Jira' | 'Asana';
 }
