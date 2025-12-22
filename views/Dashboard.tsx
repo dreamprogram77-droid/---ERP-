@@ -34,7 +34,8 @@ import {
   Maximize2,
   Minimize2,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Paintbrush
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -101,7 +102,8 @@ const StatCard = ({ title, value, icon: Icon, color, trend, trendValue, compact 
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [isCustomizing, setIsCustomizing] = useState(false);
+  // تفعيل وضع التصميم بشكل افتراضي بناءً على طلب المستخدم
+  const [isCustomizing, setIsCustomizing] = useState(true);
   
   const defaultLayout = {
     summary: true,
@@ -173,7 +175,7 @@ const Dashboard = () => {
   return (
     <div className={`space-y-8 animate-in fade-in duration-500 pb-12 relative ${config.isCompact ? 'max-w-[1600px] mx-auto' : ''}`}>
       
-      {/* Customization Drawer */}
+      {/* Customization Drawer (Design Mode) */}
       {isCustomizing && (
         <div className="fixed inset-0 z-[100] flex justify-start">
           <div 
@@ -183,11 +185,15 @@ const Dashboard = () => {
           <div className="relative w-full max-w-md bg-white/95 backdrop-blur-xl h-full shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col border-l border-slate-100" dir="rtl">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100">
+                 <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100 relative">
                     <Settings2 size={24} />
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
                  </div>
                  <div>
-                    <h3 className="text-xl font-black text-slate-800 tracking-tight">هندسة لوحة التحكم</h3>
+                    <div className="flex items-center gap-2">
+                       <h3 className="text-xl font-black text-slate-800 tracking-tight">هندسة لوحة التحكم</h3>
+                       <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded-lg text-[8px] font-black uppercase tracking-widest">Design Mode</span>
+                    </div>
                     <p className="text-xs text-slate-500 font-medium mt-1">خصص تجربتك الإدارية الخاصة</p>
                  </div>
               </div>
@@ -295,7 +301,14 @@ const Dashboard = () => {
       {/* Main Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className={`font-black text-slate-800 tracking-tighter ${config.isCompact ? 'text-2xl' : 'text-3xl'}`}>ذكاء الأعمال والتحليلات</h2>
+          <div className="flex items-center gap-3">
+             <h2 className={`font-black text-slate-800 tracking-tighter ${config.isCompact ? 'text-2xl' : 'text-3xl'}`}>ذكاء الأعمال والتحليلات</h2>
+             {isCustomizing && (
+                <span className="flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-600 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-200 animate-pulse">
+                   <Paintbrush size={10} /> وضع التصميم نشط
+                </span>
+             )}
+          </div>
           <p className="text-slate-500 font-medium">مراقبة استراتيجية لنمو الشركة مدعومة بالبيانات الحية.</p>
         </div>
         <div className="flex gap-2">
@@ -304,9 +317,11 @@ const Dashboard = () => {
           </button>
           <button 
             onClick={() => setIsCustomizing(true)}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-xs font-black shadow-lg shadow-blue-100 flex items-center gap-2 active:scale-95 transition-all"
+            className={`px-5 py-2.5 rounded-xl text-xs font-black shadow-lg transition-all flex items-center gap-2 active:scale-95 ${
+              isCustomizing ? 'bg-amber-600 text-white shadow-amber-100' : 'bg-blue-600 text-white shadow-blue-100 hover:bg-blue-700'
+            }`}
           >
-            <Settings2 size={16} /> تخصيص لوحة المعلومات
+            <Settings2 size={16} /> {isCustomizing ? 'تعديل لوحة التحكم' : 'تخصيص لوحة المعلومات'}
           </button>
         </div>
       </div>

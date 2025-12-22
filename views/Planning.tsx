@@ -142,9 +142,9 @@ const Planning = () => {
   ]);
 
   const [tasks, setTasks] = useState<TacticalTask[]>([
-    { id: '1', title: 'مراجعة أمان السيرفرات السحابية', priority: 'high', category: 'DevOps', completed: false, description: 'تحليل سجلات الوصول وتحديث جدران الحماية للإنتاج.', dueDate: '2024-01-15' },
-    { id: '2', title: 'تحسين تجربة تسجيل الدخول الموحد', priority: 'medium', category: 'UX', completed: true, description: 'دمج تقنية WebAuthn لدعم البصمة في المتصفحات.', dueDate: '2023-12-20' },
-    { id: '3', title: 'تحديث توثيق API للمطورين الجدد', priority: 'low', category: 'Docs', completed: false, description: 'كتابة أمثلة برمجية بـ Python و Go لجميع نقاط النهاية (Endpoints).', dueDate: '2024-02-10' },
+    { id: '1', title: 'مراجعة أمان السيرفرات السحابية', priority: 'high', category: 'DevOps', completed: false, description: 'تحليل سجلات الوصول وتحديث جدران الحماية للإنتاج وتغيير مفاتيح الوصول الدورية.', dueDate: '2024-01-15' },
+    { id: '2', title: 'تحسين تجربة تسجيل الدخول الموحد', priority: 'medium', category: 'UX', completed: true, description: 'دمج تقنية WebAuthn لدعم البصمة في المتصفحات وتقليل وقت الدخول بنسبة 30%.', dueDate: '2023-12-20' },
+    { id: '3', title: 'تحديث توثيق API للمطورين الجدد', priority: 'low', category: 'Docs', completed: false, description: 'كتابة أمثلة برمجية بـ Python و Go لجميع نقاط النهاية (Endpoints) وشرح بروتوكول المصادقة.', dueDate: '2024-02-10' },
   ]);
 
   const [okrs, setOkrs] = useState<OKRItem[]>([

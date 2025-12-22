@@ -28,15 +28,18 @@ import {
   ShieldCheck,
   FileText,
   FileType,
-  FileSearch
+  FileSearch,
+  User,
+  Info,
+  ChevronLeft
 } from 'lucide-react';
 import { SupportTicket, KBArticle } from '../types';
 
 const mockTickets: SupportTicket[] = [
-  { id: 't1', customerId: 'c1', customerName: 'شركة الأغذية المتحدة', subject: 'فشل مزامنة بيانات المستودع', priority: 'urgent', status: 'open', date: '2023-11-23', category: 'technical' },
-  { id: 't2', customerId: 'c2', customerName: 'متجر الرياض', subject: 'استفسار حول بوابة الدفع', priority: 'medium', status: 'in_progress', date: '2023-11-22', category: 'billing' },
-  { id: 't3', customerId: 'c3', customerName: 'لوجستيك العرب', subject: 'طلب إضافة ميزة التتبع المباشر', priority: 'low', status: 'pending_customer', date: '2023-11-20', category: 'feature_request' },
-  { id: 't4', customerId: 'c4', customerName: 'تقنية المستقبل', subject: 'بطء في لوحة تحكم الإدارة', priority: 'high', status: 'resolved', date: '2023-11-15', category: 'technical' },
+  { id: 't1', customerId: 'c1', customerName: 'شركة الأغذية المتحدة', subject: 'فشل مزامنة بيانات المستودع', priority: 'urgent', status: 'open', date: '2023-11-23', category: 'technical', description: 'توقف الربط التلقائي بين نظام ERP وأجهزة المسح الضوئي في المستودع الرئيسي، مما أدى لتراكم الشحنات غير المسجلة.' },
+  { id: 't2', customerId: 'c2', customerName: 'متجر الرياض', subject: 'استفسار حول بوابة الدفع', priority: 'medium', status: 'in_progress', date: '2023-11-22', category: 'billing', description: 'العميل يطلب توضيحاً حول عمولات البنك المسحوبة في العمليات الدولية.' },
+  { id: 't3', customerId: 'c3', customerName: 'لوجستيك العرب', subject: 'طلب إضافة ميزة التتبع المباشر', priority: 'low', status: 'pending_customer', date: '2023-11-20', category: 'feature_request', description: 'رغبة العميل في رؤية مسار الشاحنة حياً على الخريطة ضمن لوحة تحكم العملاء.' },
+  { id: 't4', customerId: 'c4', customerName: 'تقنية المستقبل', subject: 'بطء في لوحة تحكم الإدارة', priority: 'high', status: 'resolved', date: '2023-11-15', category: 'technical', description: 'تأخر في تحميل التقارير المالية الضخمة عند اختيار فترة زمنية تزيد عن 6 أشهر.' },
 ];
 
 const mockArticlesInitial: KBArticle[] = [
@@ -65,6 +68,7 @@ const Support = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isKBModalOpen, setIsKBModalOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [articles, setArticles] = useState<KBArticle[]>(mockArticlesInitial);
 
   // KB Form State
@@ -196,7 +200,7 @@ const Support = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredTickets.map((ticket) => (
-                      <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
                         <td className="px-8 py-6">
                           <div>
                             <p className="font-black text-slate-700 group-hover:text-blue-600 transition-colors">{ticket.subject}</p>
@@ -327,6 +331,111 @@ const Support = () => {
           )}
         </div>
       </div>
+
+      {/* Ticket Details Modal - Dynamic Color Sections */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+           <div className={`bg-white rounded-[3.5rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100 flex flex-col`}>
+              <div className={`p-10 flex justify-between items-center text-white relative overflow-hidden transition-colors duration-500 ${
+                selectedTicket.status === 'resolved' ? 'bg-emerald-600' : 
+                (selectedTicket.priority === 'urgent' || selectedTicket.priority === 'high') ? 'bg-rose-600' : 'bg-amber-500'
+              }`}>
+                 <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 transition-transform hover:scale-110 duration-700">
+                    <LifeBuoy size={160} />
+                 </div>
+                 <div className="flex items-center gap-5 relative z-10">
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/30 shadow-xl">
+                       <LifeBuoy size={32} />
+                    </div>
+                    <div>
+                       <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-2xl font-black tracking-tight">{selectedTicket.subject}</h3>
+                       </div>
+                       <p className="text-white/80 text-sm font-medium">تذكرة رقم: {selectedTicket.id.toUpperCase()} • {selectedTicket.date}</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedTicket(null)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all relative z-10"><X size={24} /></button>
+              </div>
+
+              <div className="p-10 space-y-10 bg-slate-50/30 overflow-y-auto max-h-[70vh]">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-blue-200 transition-all">
+                       <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><User size={24} /></div>
+                       <div>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">العميل</p>
+                          <p className="text-sm font-black text-slate-800">{selectedTicket.customerName}</p>
+                       </div>
+                    </div>
+                    <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-blue-200 transition-all">
+                       <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"><Tag size={24} /></div>
+                       <div>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">التصنيف</p>
+                          <p className="text-sm font-black text-slate-800 uppercase tracking-tighter">{selectedTicket.category}</p>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <Info size={14} /> تفاصيل المشكلة المذكورة
+                    </h4>
+                    <div className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm leading-relaxed text-slate-600 text-sm font-medium">
+                       {selectedTicket.description || 'لا يوجد وصف تفصيلي لهذه التذكرة، يرجى التواصل مع العميل لمزيد من الإيضاح.'}
+                    </div>
+                 </div>
+
+                 {/* Dynamic Status Section */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className={`p-6 rounded-3xl border transition-all shadow-sm ${
+                      selectedTicket.status === 'resolved' ? 'bg-emerald-50 border-emerald-100' : 
+                      (selectedTicket.priority === 'urgent' || selectedTicket.priority === 'high') ? 'bg-rose-50 border-rose-100' : 'bg-amber-50 border-amber-100'
+                    }`}>
+                       <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${
+                         selectedTicket.status === 'resolved' ? 'text-emerald-600' : 
+                         (selectedTicket.priority === 'urgent' || selectedTicket.priority === 'high') ? 'text-rose-600' : 'text-amber-600'
+                       }`}>الحالة التنفيذية</p>
+                       <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full animate-pulse ${
+                            selectedTicket.status === 'resolved' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 
+                            (selectedTicket.priority === 'urgent' || selectedTicket.priority === 'high') ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                          }`}></div>
+                          <span className={`text-base font-black ${
+                            selectedTicket.status === 'resolved' ? 'text-emerald-800' : 
+                            (selectedTicket.priority === 'urgent' || selectedTicket.priority === 'high') ? 'text-rose-800' : 'text-amber-800'
+                          }`}>
+                            {statusLabels[selectedTicket.status]}
+                          </span>
+                       </div>
+                    </div>
+                    <div className={`p-6 rounded-3xl border transition-all shadow-sm ${
+                      selectedTicket.priority === 'urgent' ? 'bg-rose-600 text-white border-rose-700 shadow-rose-200' : 'bg-white border-slate-100'
+                    }`}>
+                       <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${
+                         selectedTicket.priority === 'urgent' ? 'text-rose-100' : 'text-slate-400'
+                       }`}>مستوى الأهمية</p>
+                       <div className="flex items-center gap-2">
+                          <PriorityBadge priority={selectedTicket.priority} />
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="p-10 border-t border-slate-100 bg-white flex flex-col sm:flex-row gap-4">
+                 <div className="flex-1 flex gap-3">
+                    <button className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                       <Send size={18} className="rotate-180" /> الرد على العميل
+                    </button>
+                    <button className="p-4 border border-slate-200 text-slate-400 rounded-2xl hover:bg-slate-50 transition-all">
+                       <MoreVertical size={20} />
+                    </button>
+                 </div>
+                 <button onClick={() => setSelectedTicket(null)} className="py-4 px-10 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all">
+                   إغلاق
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Ticket Creation Modal */}
       {isTicketModalOpen && (
@@ -502,13 +611,21 @@ const StatCard = ({ label, value, sub, icon: Icon, color }: any) => (
 
 const PriorityBadge = ({ priority }: { priority: string }) => {
   const colors: any = {
-    urgent: 'bg-rose-100 text-rose-600 border-rose-200',
+    urgent: 'bg-rose-100 text-rose-600 border-rose-200 shadow-sm shadow-rose-100',
     high: 'bg-orange-100 text-orange-600 border-orange-200',
     medium: 'bg-blue-100 text-blue-600 border-blue-200',
     low: 'bg-slate-100 text-slate-600 border-slate-200',
   };
-  const labels: any = { urgent: 'حرجة', high: 'عالية', medium: 'متوسطة', low: 'منخفضة' };
+  const labels: any = { urgent: 'حرجة جداً', high: 'عالية الأولوية', medium: 'متوسطة', low: 'منخفضة' };
   return <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border ${colors[priority]}`}>{labels[priority]}</span>;
+};
+
+const statusLabels: Record<string, string> = {
+  open: 'مفتوحة',
+  in_progress: 'قيد المعالجة',
+  pending_customer: 'بانتظار العميل',
+  resolved: 'محلولة بنجاح',
+  closed: 'مغلقة نهائياً'
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
