@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   CheckSquare, 
   Plus, 
@@ -23,7 +23,10 @@ import {
   LayoutList,
   CalendarDays,
   Flag,
-  Sparkles
+  Sparkles,
+  Play,
+  Square,
+  Timer
 } from 'lucide-react';
 
 interface TodoTask {
@@ -34,16 +37,17 @@ interface TodoTask {
   priority: 'low' | 'medium' | 'high';
   dueDate: string;
   completed: boolean;
+  trackedHours: number; // الساعات الإجمالية المسجلة
 }
 
 const initialTasks: TodoTask[] = [
-  { id: '1', title: 'مراجعة عقد شركة المراعي', category: 'عميل', priority: 'high', dueDate: '2023-11-25', completed: false, description: 'تحتاج مراجعة دقيقة من القسم القانوني' },
-  { id: '2', title: 'تحديث سيرفرات قاعدة البيانات', category: 'مشروع', priority: 'medium', dueDate: '2023-11-26', completed: true, description: 'مزامنة النسخ الاحتياطية' },
-  { id: '3', title: 'اجتماع ربع سنوي مع الفريق', category: 'عام', priority: 'high', dueDate: '2023-11-27', completed: false },
-  { id: '4', title: 'دفع فواتير AWS', category: 'عام', priority: 'low', dueDate: '2023-11-28', completed: false },
-  { id: '5', title: 'تحسين أداء واجهة ERP', category: 'مشروع', priority: 'medium', dueDate: '2023-11-29', completed: false },
-  { id: '6', title: 'مهمة متأخرة قديمة', category: 'عام', priority: 'high', dueDate: '2023-11-10', completed: false },
-  { id: '7', title: 'تحضير عرض اليوم', category: 'عميل', priority: 'high', dueDate: new Date().toISOString().split('T')[0], completed: false },
+  { id: '1', title: 'مراجعة عقد شركة المراعي', category: 'عميل', priority: 'high', dueDate: '2023-11-25', completed: false, description: 'تحتاج مراجعة دقيقة من القسم القانوني', trackedHours: 2.5 },
+  { id: '2', title: 'تحديث سيرفرات قاعدة البيانات', category: 'مشروع', priority: 'medium', dueDate: '2023-11-26', completed: true, description: 'مزامنة النسخ الاحتياطية', trackedHours: 4.2 },
+  { id: '3', title: 'اجتماع ربع سنوي مع الفريق', category: 'عام', priority: 'high', dueDate: '2023-11-27', completed: false, trackedHours: 0 },
+  { id: '4', title: 'دفع فواتير AWS', category: 'عام', priority: 'low', dueDate: '2023-11-28', completed: false, trackedHours: 0.5 },
+  { id: '5', title: 'تحسين أداء واجهة ERP', category: 'مشروع', priority: 'medium', dueDate: '2023-11-29', completed: false, trackedHours: 1.8 },
+  { id: '6', title: 'مهمة متأخرة قديمة', category: 'عام', priority: 'high', dueDate: '2023-11-10', completed: false, trackedHours: 0 },
+  { id: '7', title: 'تحضير عرض اليوم', category: 'عميل', priority: 'high', dueDate: new Date().toISOString().split('T')[0], completed: false, trackedHours: 0 },
 ];
 
 type GroupMode = 'flat' | 'priority' | 'date';
@@ -57,7 +61,52 @@ const TodoList = () => {
   const [newTaskDate, setNewTaskDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingTask, setEditingTask] = useState<TodoTask | null>(null);
 
+  // Time Tracking State
+  const [activeTimers, setActiveTimers] = useState<Record<string, number>>({}); 
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // التحديث اللحظي للعدادات النشطة
+  useEffect(() => {
+    let interval: any;
+    if (Object.keys(activeTimers).length > 0) {
+      interval = setInterval(() => {
+        setCurrentTime(Date.now());
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [activeTimers]);
+
+  const handleToggleTimer = (taskId: string) => {
+    if (activeTimers[taskId]) {
+      // إيقاف المؤقت وحساب الوقت
+      const startTime = activeTimers[taskId];
+      const elapsedMs = Date.now() - startTime;
+      const elapsedHours = elapsedMs / (1000 * 60 * 60);
+
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, trackedHours: Number((t.trackedHours + elapsedHours).toFixed(2)) } : t
+      ));
+
+      const newTimers = { ...activeTimers };
+      delete newTimers[taskId];
+      setActiveTimers(newTimers);
+    } else {
+      // بدء مؤقت جديد
+      setActiveTimers(prev => ({ ...prev, [taskId]: Date.now() }));
+    }
+  };
+
+  const formatDuration = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   const toggleTask = (id: string) => {
+    // إيقاف المؤقت إذا تم إكمال المهمة
+    if (activeTimers[id]) handleToggleTimer(id);
     setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
@@ -70,7 +119,8 @@ const TodoList = () => {
       category: 'عام',
       priority: 'medium',
       dueDate: newTaskDate,
-      completed: false
+      completed: false,
+      trackedHours: 0
     };
     setTasks([newTask, ...tasks]);
     setNewTaskTitle('');
@@ -79,6 +129,11 @@ const TodoList = () => {
 
   const deleteTask = (id: string) => {
     if (window.confirm('هل أنت متأكد من حذف هذه المهمة؟')) {
+      if (activeTimers[id]) {
+         const newTimers = { ...activeTimers };
+         delete newTimers[id];
+         setActiveTimers(newTimers);
+      }
       setTasks(tasks.filter(t => t.id !== id));
     }
   };
@@ -129,63 +184,92 @@ const TodoList = () => {
     total: tasks.length,
     completed: tasks.filter(t => t.completed).length,
     pending: tasks.filter(t => !t.completed).length,
+    totalHours: tasks.reduce((acc, t) => acc + t.trackedHours, 0).toFixed(1)
   };
 
-  // Fix: Added optional key to component props to resolve TypeScript assignment error when rendering in a map.
-  const TaskItem = ({ task }: { task: TodoTask; key?: string }) => (
-    <div 
-      className={`p-4 flex items-center justify-between transition-all group border-b border-slate-50 last:border-b-0 ${
-        task.completed ? 'bg-slate-50/80 opacity-80' : 'bg-white hover:bg-blue-50/30'
-      } ${
-        !task.completed && task.priority === 'high' ? 'border-r-4 border-r-rose-500' : ''
-      }`}
-    >
-      <div className="flex items-center gap-4 flex-1">
-        <button 
-          onClick={() => toggleTask(task.id)}
-          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-            task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent hover:border-blue-400'
-          }`}
-        >
-          <CheckCircle2 size={16} />
-        </button>
-        <div className="flex-1 min-w-0">
-           <p className={`text-sm font-bold truncate transition-all ${task.completed ? 'text-slate-400 line-through decoration-2' : 'text-slate-700'}`}>
-             {task.title}
-           </p>
-           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 ${
-                task.priority === 'high' ? 'bg-rose-100 text-rose-600' : task.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
-              }`}>
-                <AlertCircle size={10} /> {task.priority === 'high' ? 'عالية' : task.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 shrink-0">
-                <Tag size={10} /> {task.category}
-              </span>
-              <span className={`text-[10px] font-bold flex items-center gap-1 shrink-0 ${
-                !task.completed && task.dueDate < new Date().toISOString().split('T')[0] ? 'text-rose-500' : 'text-slate-400'
-              }`}>
-                <Calendar size={10} /> {task.dueDate}
-              </span>
-           </div>
+  const TaskItem = ({ task }: { task: TodoTask; key?: string }) => {
+    const isTimerRunning = !!activeTimers[task.id];
+    
+    return (
+      <div 
+        className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between transition-all group border-b border-slate-50 last:border-b-0 ${
+          task.completed ? 'bg-slate-50/80 opacity-80' : 'bg-white hover:bg-blue-50/30'
+        } ${
+          isTimerRunning ? 'bg-blue-50/50 ring-2 ring-blue-500/20' : ''
+        } ${
+          !task.completed && task.priority === 'high' ? 'border-r-4 border-r-rose-500' : ''
+        }`}
+      >
+        <div className="flex items-center gap-4 flex-1 mb-3 sm:mb-0">
+          <button 
+            onClick={() => toggleTask(task.id)}
+            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+              task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent hover:border-blue-400'
+            }`}
+          >
+            <CheckCircle2 size={16} />
+          </button>
+          <div className="flex-1 min-w-0">
+             <p className={`text-sm font-bold truncate transition-all ${task.completed ? 'text-slate-400 line-through decoration-2' : 'text-slate-700'}`}>
+               {task.title}
+             </p>
+             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 ${
+                  task.priority === 'high' ? 'bg-rose-100 text-rose-600' : task.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                }`}>
+                  <AlertCircle size={10} /> {task.priority === 'high' ? 'عالية' : task.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1 shrink-0">
+                  <Tag size={10} /> {task.category}
+                </span>
+                <span className={`text-[10px] font-bold flex items-center gap-1 shrink-0 ${
+                  !task.completed && task.dueDate < new Date().toISOString().split('T')[0] ? 'text-rose-500' : 'text-slate-400'
+                }`}>
+                  <Calendar size={10} /> {task.dueDate}
+                </span>
+             </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0">
+          {/* Time Tracking Control */}
+          <div className="flex items-center gap-3 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50">
+             <div className="text-right">
+                <p className="text-[8px] text-slate-400 font-black uppercase tracking-tighter">وقت العمل</p>
+                <p className={`text-[10px] font-mono font-black ${isTimerRunning ? 'text-blue-600 animate-pulse' : 'text-slate-600'}`}>
+                   {isTimerRunning ? formatDuration(currentTime - activeTimers[task.id]) : `${task.trackedHours}h`}
+                </p>
+             </div>
+             <button 
+               onClick={() => handleToggleTimer(task.id)}
+               disabled={task.completed}
+               className={`p-2 rounded-lg transition-all shadow-sm disabled:opacity-30 ${
+                 isTimerRunning ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-blue-600 text-white hover:bg-blue-700'
+               }`}
+               title={isTimerRunning ? 'إيقاف المؤقت' : 'بدء تتبع الوقت'}
+             >
+               {isTimerRunning ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+             </button>
+          </div>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => setEditingTask(task)}
+              className="p-2 text-slate-300 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+            >
+              <Edit3 size={16} />
+            </button>
+            <button 
+              onClick={() => deleteTask(task.id)}
+              className="p-2 text-slate-300 hover:text-rose-500 hover:bg-white rounded-lg transition-all"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button 
-          onClick={() => setEditingTask(task)}
-          className="p-2 text-slate-300 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
-        >
-          <Edit3 size={16} />
-        </button>
-        <button 
-          onClick={() => deleteTask(task.id)}
-          className="p-2 text-slate-300 hover:text-rose-500 hover:bg-white rounded-lg transition-all"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12 relative">
@@ -198,6 +282,11 @@ const TodoList = () => {
         </div>
         <div className="flex gap-2">
           <div className="bg-white px-5 py-2 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-6">
+             <div className="text-center">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-0.5">ساعات العمل</p>
+                <p className="text-lg font-black text-blue-600">{stats.totalHours}</p>
+             </div>
+             <div className="w-px h-8 bg-slate-100"></div>
              <div className="text-center">
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-0.5">المنجزة</p>
                 <p className="text-lg font-black text-emerald-600">{stats.completed}</p>
@@ -213,7 +302,6 @@ const TodoList = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-6">
-          {/* Enhanced Quick Add Form */}
           <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
             <form onSubmit={addTask} className="flex flex-col md:flex-row gap-3">
               <div className="relative flex-[3]">
@@ -244,7 +332,6 @@ const TodoList = () => {
             </form>
           </div>
 
-          {/* List Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex gap-2">
               <div className="flex bg-slate-100 p-1 rounded-xl">
@@ -304,7 +391,6 @@ const TodoList = () => {
             </div>
           </div>
 
-          {/* Grouped Task List */}
           <div className="space-y-6">
             {Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
               groupTasks.length > 0 && (
@@ -336,7 +422,6 @@ const TodoList = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Calendar Mini View */}
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
                <h4 className="text-sm font-black text-slate-800 uppercase tracking-tighter">تقويم المهام</h4>
@@ -367,19 +452,17 @@ const TodoList = () => {
             </div>
           </div>
 
-          {/* Smart Suggestion */}
           <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><Clock size={120} /></div>
              <h4 className="font-black text-sm mb-3 flex items-center gap-2 relative z-10"><Sparkles size={18} className="text-blue-200" /> اقتراح ذكي</h4>
              <p className="text-xs text-indigo-100 leading-relaxed relative z-10 font-medium">
-               لديك **3 مهام متأخرة** ذات أولوية عالية. ننصح بالبدء بـ "مراجعة عقد شركة المراعي" لتقليل المخاطر التعاقدية.
+               لديك **{stats.pending} مهام متبقية**. هل تريد مراجعة "معدل الحرق المالي" للمشاريع بناءً على ساعات العمل المسجلة؟
              </p>
-             <button className="w-full mt-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-[10px] font-black uppercase transition-all relative z-10">إدارة المخاطر</button>
+             <button className="w-full mt-6 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-[10px] font-black uppercase transition-all relative z-10">إدارة الأداء</button>
           </div>
         </div>
       </div>
 
-      {/* Edit Modal */}
       {editingTask && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100">
@@ -441,16 +524,14 @@ const TodoList = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">موعد الاستحقاق</label>
-                <div className="relative">
-                  <Calendar size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="date" 
-                    value={editingTask.dueDate}
-                    onChange={(e) => setEditingTask({...editingTask, dueDate: e.target.value})}
-                    className="w-full pr-14 pl-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
-                  />
-                </div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الساعات المسجلة (يدوياً)</label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  value={editingTask.trackedHours}
+                  onChange={(e) => setEditingTask({...editingTask, trackedHours: Number(e.target.value)})}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-slate-700"
+                />
               </div>
 
               <div className="flex gap-4 pt-4">
