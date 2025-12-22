@@ -22,6 +22,8 @@ export interface Task {
   status: 'pending' | 'completed';
   hours: number;
   dueDate?: string;
+  externalId?: string;
+  externalSource?: 'Jira' | 'Asana' | 'GitHub';
 }
 
 export interface ProjectResource {
@@ -55,6 +57,8 @@ export interface Project {
   milestones: Milestone[];
   tasks: Task[];
   resources: ProjectResource[];
+  externalProjectId?: string;
+  connectedTool?: 'Jira' | 'Asana';
 }
 
 export type ProductCategory = 'برمجيات' | 'استشارات' | 'أجهزة';

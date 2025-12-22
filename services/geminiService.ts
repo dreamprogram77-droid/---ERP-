@@ -105,3 +105,47 @@ export const chatWithAssistant = async (message: string, history: any[]) => {
     return "واجهت مشكلة في التواصل مع المساعد الذكي.";
   }
 };
+
+/**
+ * محاكاة جلب المهام من أدوات خارجية مثل Jira أو Asana
+ */
+export const fetchExternalTasks = async (projectName: string, tool: 'Jira' | 'Asana') => {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `قم بتوليد قائمة مهام تقنية محاكاة بصيغة JSON لمشروع برمجيات اسمه "${projectName}" يتم استيرادها من أداة "${tool}".
+      
+      المطلوب JSON Array يحتوي على كائنات بالخصائص التالية:
+      - title: عنوان المهمة (بالعربية)
+      - assignedTo: اسم الموظف (بالعربية)
+      - hours: عدد الساعات (رقم)
+      - dueDate: تاريخ بصيغة YYYY-MM-DD
+      - status: "pending" أو "completed"
+      - externalId: معرف فريد مثل "PROJ-123"
+      
+      أنتج 3-5 مهام فقط.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              assignedTo: { type: Type.STRING },
+              hours: { type: Type.NUMBER },
+              dueDate: { type: Type.STRING },
+              status: { type: Type.STRING },
+              externalId: { type: Type.STRING }
+            }
+          }
+        }
+      }
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Fetch External Tasks Error:", error);
+    return [];
+  }
+};

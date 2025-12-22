@@ -47,7 +47,10 @@ import {
   Send,
   Loader2,
   BrainCircuit,
-  LayoutDashboard
+  LayoutDashboard,
+  AlignRight,
+  Info,
+  ChevronLeft
 } from 'lucide-react';
 import { 
   Radar,
@@ -63,9 +66,11 @@ type PlanningTab = 'okrs' | 'roadmap' | 'tasks' | 'marketing' | 'risks' | 'ai-pl
 interface TacticalTask {
   id: string;
   title: string;
+  description?: string;
   priority: 'low' | 'medium' | 'high';
   category: string;
   completed: boolean;
+  dueDate?: string;
 }
 
 interface RoadmapItem {
@@ -137,9 +142,9 @@ const Planning = () => {
   ]);
 
   const [tasks, setTasks] = useState<TacticalTask[]>([
-    { id: '1', title: 'مراجعة أمان السيرفرات السحابية', priority: 'high', category: 'DevOps', completed: false },
-    { id: '2', title: 'تحسين تجربة تسجيل الدخول الموحد', priority: 'medium', category: 'UX', completed: true },
-    { id: '3', title: 'تحديث توثيق API للمطورين الجدد', priority: 'low', category: 'Docs', completed: false },
+    { id: '1', title: 'مراجعة أمان السيرفرات السحابية', priority: 'high', category: 'DevOps', completed: false, description: 'تحليل سجلات الوصول وتحديث جدران الحماية للإنتاج.', dueDate: '2024-01-15' },
+    { id: '2', title: 'تحسين تجربة تسجيل الدخول الموحد', priority: 'medium', category: 'UX', completed: true, description: 'دمج تقنية WebAuthn لدعم البصمة في المتصفحات.', dueDate: '2023-12-20' },
+    { id: '3', title: 'تحديث توثيق API للمطورين الجدد', priority: 'low', category: 'Docs', completed: false, description: 'كتابة أمثلة برمجية بـ Python و Go لجميع نقاط النهاية (Endpoints).', dueDate: '2024-02-10' },
   ]);
 
   const [okrs, setOkrs] = useState<OKRItem[]>([
@@ -578,7 +583,6 @@ const RoadmapTab = ({ items, setItems }: { items: RoadmapItem[], setItems: any }
                           }`}></div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => {setEditingId(item.id); setEditForm(item);}} className="p-1 text-slate-300 hover:text-blue-600"><Edit3 size={12}/></button>
-                            {/* Fixed: Used item.id instead of undefined id */}
                             <button onClick={() => handleDelete(item.id)} className="p-1 text-slate-300 hover:text-rose-500"><Trash2 size={12}/></button>
                           </div>
                         </div>
@@ -601,7 +605,8 @@ const RoadmapTab = ({ items, setItems }: { items: RoadmapItem[], setItems: any }
 const TacticalTasksTab = ({ tasks, setTasks }: { tasks: TacticalTask[], setTasks: any }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [taskForm, setTaskForm] = useState<Partial<TacticalTask>>({ title: '', priority: 'medium', category: 'General' });
+  const [viewingTask, setViewingTask] = useState<TacticalTask | null>(null);
+  const [taskForm, setTaskForm] = useState<Partial<TacticalTask>>({ title: '', description: '', priority: 'medium', category: 'عام' });
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -609,26 +614,28 @@ const TacticalTasksTab = ({ tasks, setTasks }: { tasks: TacticalTask[], setTasks
     const task: TacticalTask = {
       id: Date.now().toString(),
       title: taskForm.title,
+      description: taskForm.description || '',
       priority: taskForm.priority as any,
-      category: taskForm.category || 'General',
+      category: taskForm.category || 'عام',
       completed: false
     };
     setTasks([task, ...tasks]);
     setIsAdding(false);
-    setTaskForm({ title: '', priority: 'medium', category: 'General' });
+    setTaskForm({ title: '', description: '', priority: 'medium', category: 'عام' });
   };
 
   const handleUpdateTask = (e: React.FormEvent) => {
     e.preventDefault();
     setTasks(tasks.map(t => t.id === editingTaskId ? { ...t, ...taskForm } : t));
     setEditingTaskId(null);
-    setTaskForm({ title: '', priority: 'medium', category: 'General' });
+    setTaskForm({ title: '', description: '', priority: 'medium', category: 'عام' });
   };
 
   const startEdit = (task: TacticalTask) => {
     setEditingTaskId(task.id);
     setTaskForm(task);
     setIsAdding(false);
+    setViewingTask(null);
   };
 
   return (
@@ -639,31 +646,53 @@ const TacticalTasksTab = ({ tasks, setTasks }: { tasks: TacticalTask[], setTasks
           <Plus size={16} /> إضافة مهمة
         </button>
       </div>
+
       {(isAdding || editingTaskId) && (
         <form onSubmit={editingTaskId ? handleUpdateTask : handleAddTask} className="bg-slate-50 p-6 rounded-2xl border border-blue-100 animate-in slide-in-from-top-2 duration-300">
           <h4 className="text-xs font-black text-blue-600 mb-4 uppercase tracking-widest">{editingTaskId ? 'تعديل المهمة' : 'تعبئة مهمة جديدة'}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <input 
-              className="md:col-span-1 bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="وصف المهمة..."
-              value={taskForm.title}
-              onChange={e => setTaskForm({...taskForm, title: e.target.value})}
-              autoFocus
-            />
-            <select 
-              className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none"
-              value={taskForm.priority}
-              onChange={e => setTaskForm({...taskForm, priority: e.target.value as any})}
-            >
-              <option value="high">أولوية عالية</option>
-              <option value="medium">أولوية متوسطة</option>
-              <option value="low">أولوية منخفضة</option>
-            </select>
-            <input 
-              className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none"
-              placeholder="القسم (مثال: UI/UX)"
-              value={taskForm.category}
-              onChange={e => setTaskForm({...taskForm, category: e.target.value})}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase">عنوان المهمة</label>
+              <input 
+                className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="وصف مختصر..."
+                value={taskForm.title}
+                onChange={e => setTaskForm({...taskForm, title: e.target.value})}
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase">الأولوية</label>
+                <select 
+                  className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none"
+                  value={taskForm.priority}
+                  onChange={e => setTaskForm({...taskForm, priority: e.target.value as any})}
+                >
+                  <option value="high">عالية</option>
+                  <option value="medium">متوسطة</option>
+                  <option value="low">منخفضة</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase">القسم</label>
+                <input 
+                  className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none"
+                  placeholder="مثال: DevOps"
+                  value={taskForm.category}
+                  onChange={e => setTaskForm({...taskForm, category: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1 mb-4">
+            <label className="text-[10px] font-black text-slate-400 uppercase">وصف تفصيلي</label>
+            <textarea 
+              rows={3}
+              className="w-full bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="اكتب كامل التفاصيل التقنية هنا..."
+              value={taskForm.description}
+              onChange={e => setTaskForm({...taskForm, description: e.target.value})}
             />
           </div>
           <div className="flex gap-2 justify-end">
@@ -674,38 +703,134 @@ const TacticalTasksTab = ({ tasks, setTasks }: { tasks: TacticalTask[], setTasks
           </div>
         </form>
       )}
+
       <div className="bg-slate-50 p-2 rounded-[2rem] border border-slate-100">
         <div className="divide-y divide-slate-200/50">
           {tasks.map((task) => (
-            <div key={task.id} className="p-4 flex items-center justify-between hover:bg-white transition-all rounded-xl group">
+            <div 
+              key={task.id} 
+              onClick={() => setViewingTask(task)}
+              className="p-4 flex items-center justify-between hover:bg-white transition-all rounded-xl group cursor-pointer"
+            >
               <div className="flex items-center gap-4">
                 <button 
-                  onClick={() => setTasks(tasks.map(t => t.id === task.id ? {...t, completed: !t.completed} : t))}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTasks(tasks.map(t => t.id === task.id ? {...t, completed: !t.completed} : t));
+                  }}
                   className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
                     task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 text-transparent hover:border-blue-400'
                   }`}
                 >
                   <Check size={14} />
                 </button>
-                <div>
+                <div className="text-right">
                   <p className={`text-sm font-bold ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>
                   <div className="flex gap-2 mt-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{task.category}</span>
                     <span className="text-[10px] text-slate-300">•</span>
                     <span className={`text-[10px] font-black uppercase ${
                       task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : 'text-blue-500'
-                    }`}>أولوية {task.priority}</span>
+                    }`}>أولوية {task.priority === 'high' ? 'عالية' : task.priority === 'medium' ? 'متوسطة' : 'منخفضة'}</span>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                <button onClick={() => startEdit(task)} className="p-2 text-slate-300 hover:text-blue-600"><Edit3 size={16} /></button>
-                <button onClick={() => setTasks(tasks.filter(t => t.id !== task.id))} className="p-2 text-slate-300 hover:text-rose-500"><Trash2 size={16} /></button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); startEdit(task); }} 
+                  className="p-2 text-slate-300 hover:text-blue-600 hover:bg-slate-50 rounded-lg"
+                >
+                  <Edit3 size={16} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setTasks(tasks.filter(t => t.id !== task.id)); }} 
+                  className="p-2 text-slate-300 hover:text-rose-500 hover:bg-slate-50 rounded-lg"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Viewing Task Modal */}
+      {viewingTask && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100">
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                 <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl ${
+                      viewingTask.completed ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white'
+                    }`}>
+                       {viewingTask.completed ? <CheckCircle2 size={28} /> : <Clock size={28} />}
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-slate-800">{viewingTask.title}</h3>
+                       <p className="text-xs text-slate-500 font-medium mt-1">
+                         {viewingTask.completed ? 'مهمة منجزة بنجاح' : 'مهمة قيد التنفيذ'}
+                       </p>
+                    </div>
+                 </div>
+                 <button onClick={() => setViewingTask(null)} className="p-2 text-slate-400 hover:text-rose-500 rounded-xl transition-all"><X size={24} /></button>
+              </div>
+
+              <div className="p-10 space-y-8">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                         <Flag size={12} /> الأولوية
+                       </p>
+                       <p className={`text-sm font-black uppercase ${
+                         viewingTask.priority === 'high' ? 'text-rose-600' : viewingTask.priority === 'medium' ? 'text-amber-600' : 'text-blue-600'
+                       }`}>
+                         {viewingTask.priority === 'high' ? 'عالية جداً' : viewingTask.priority === 'medium' ? 'متوسطة' : 'منخفضة'}
+                       </p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                         <Tag size={12} /> القسم / التصنيف
+                       </p>
+                       <p className="text-sm font-black text-slate-800">{viewingTask.category}</p>
+                    </div>
+                 </div>
+
+                 <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <AlignRight size={14} /> تفاصيل المهمة والوصف
+                    </h4>
+                    <div className="p-6 bg-blue-50/30 border border-blue-100 rounded-2xl min-h-[120px]">
+                       <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                          {viewingTask.description || 'لا يوجد وصف تفصيلي لهذه المهمة.'}
+                       </p>
+                    </div>
+                 </div>
+
+                 {viewingTask.dueDate && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                       <CalendarIcon size={16} className="text-blue-500" /> موعد التسليم المتوقع: 
+                       <span className="font-mono text-blue-600">{viewingTask.dueDate}</span>
+                    </div>
+                 )}
+              </div>
+
+              <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex gap-4">
+                 <button 
+                  onClick={() => startEdit(viewingTask)}
+                  className="flex-1 py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                 >
+                    <Edit3 size={18} /> تعديل المهمة
+                 </button>
+                 <button 
+                  onClick={() => setViewingTask(null)}
+                  className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"
+                 >
+                    إغلاق التفاصيل
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

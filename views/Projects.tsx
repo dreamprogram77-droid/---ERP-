@@ -48,9 +48,11 @@ import {
   Sparkles,
   Loader2,
   RefreshCw,
-  FileBarChart
+  FileBarChart,
+  Link as LinkIcon,
+  Trello
 } from 'lucide-react';
-import { getProjectFinancialAnalysis } from '../services/geminiService';
+import { getProjectFinancialAnalysis, fetchExternalTasks } from '../services/geminiService';
 
 const mockProjects: Project[] = [
   {
@@ -85,7 +87,8 @@ const mockProjects: Project[] = [
       { id: 'r2', role: 'مهندس بنية تحتية (DevOps)', allocatedMember: 'عمر ياسين', allocationPercentage: 40, status: 'مكتمل', requiredSkills: ['AWS', 'Docker', 'CI/CD'] },
       { id: 'r3', role: 'مصمم تجربة مستخدم (Senior UI/UX)', status: 'قيد البحث', allocationPercentage: 0, requiredSkills: ['Figma', 'Prototyping'] },
       { id: 'r4', role: 'مطور أنظمة خلفية (Go/Node)', status: 'عجز', allocationPercentage: 0, requiredSkills: ['Microservices', 'PostgreSQL'] }
-    ]
+    ],
+    connectedTool: 'Jira'
   },
   {
     id: '2',
@@ -274,8 +277,9 @@ const Projects = () => {
   const [activeTimers, setActiveTimers] = useState<Record<string, number>>({}); 
   const [currentTime, setCurrentTime] = useState(Date.now());
 
-  // AI Report States
+  // AI & Integration States
   const [isReportLoading, setIsReportLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [reportContent, setReportContent] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
@@ -396,6 +400,26 @@ const Projects = () => {
     setIsReportLoading(false);
   };
 
+  const handleSyncTasks = async () => {
+    if (!selectedProject || !selectedProject.connectedTool) return;
+    setIsSyncing(true);
+    const externalTasks = await fetchExternalTasks(selectedProject.name, selectedProject.connectedTool as any);
+    
+    if (externalTasks && externalTasks.length > 0) {
+      const updatedTasks = [...selectedProject.tasks, ...externalTasks.map((t: any) => ({
+        ...t,
+        id: 'ext-' + t.externalId,
+        externalSource: selectedProject.connectedTool
+      }))];
+      
+      const updatedProject = { ...selectedProject, tasks: updatedTasks };
+      setSelectedProject(updatedProject);
+      setAllProjects(prev => prev.map(p => p.id === selectedProject.id ? updatedProject : p));
+      alert(`تم بنجاح مزامنة عدد (${externalTasks.length}) مهام من ${selectedProject.connectedTool}`);
+    }
+    setIsSyncing(false);
+  };
+
   if (selectedProject) {
     const isLowProfit = selectedProject.profit < (selectedProject.budget * 0.1);
     const budgetBurnRate = Math.min(100, Math.round((selectedProject.actualCost / selectedProject.budget) * 100));
@@ -407,6 +431,16 @@ const Projects = () => {
             <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> العودة للوحة المشاريع
           </button>
           <div className="flex gap-3">
+             {selectedProject.connectedTool && (
+               <button 
+                onClick={handleSyncTasks} 
+                disabled={isSyncing}
+                className="px-5 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl text-xs font-black shadow-sm flex items-center gap-2 hover:bg-indigo-100 transition-all disabled:opacity-50"
+               >
+                 {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} 
+                 مزامنة مع {selectedProject.connectedTool}
+               </button>
+             )}
              <button onClick={() => setIsEditModalOpen(true)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 flex items-center gap-2">
                <Edit3 size={16} /> تعديل المشروع
              </button>
@@ -425,6 +459,11 @@ const Projects = () => {
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
                       selectedProject.status === ProjectStatus.COMPLETED ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
                     }`}>{selectedProject.status}</span>
+                    {selectedProject.connectedTool && (
+                       <span className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-indigo-100">
+                          <LinkIcon size={12} /> متصل بـ {selectedProject.connectedTool}
+                       </span>
+                    )}
                  </div>
                  <p className="text-slate-500 font-bold text-lg mb-8">{selectedProject.client} • التسليم: {selectedProject.deadline}</p>
                  
@@ -506,7 +545,6 @@ const Projects = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            {/* Resources Section */}
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/30">
                 <div className="flex items-center gap-4">
@@ -613,7 +651,18 @@ const Projects = () => {
                <div className="p-8">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="font-black text-slate-800 flex items-center gap-2">المهام التنفيذية</h3>
-                    <button onClick={() => setIsTaskModalOpen(true)} className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl hover:bg-blue-100 transition-all shadow-sm">+ مهمة جديدة</button>
+                    <div className="flex gap-2">
+                       {selectedProject.connectedTool && (
+                         <button 
+                          onClick={handleSyncTasks}
+                          disabled={isSyncing}
+                          className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl hover:bg-indigo-100 transition-all shadow-sm flex items-center gap-1"
+                         >
+                           {isSyncing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} مزامنة {selectedProject.connectedTool}
+                         </button>
+                       )}
+                       <button onClick={() => setIsTaskModalOpen(true)} className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl hover:bg-blue-100 transition-all shadow-sm">+ مهمة جديدة</button>
+                    </div>
                   </div>
                   <div className="space-y-4">
                      {selectedProject.tasks.map(task => {
@@ -625,7 +674,15 @@ const Projects = () => {
                                  {task.status === 'completed' ? <CheckCircle2 size={20}/> : <Timer size={20}/>}
                               </div>
                               <div>
-                                 <p className={`text-sm font-bold ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>
+                                 <div className="flex items-center gap-2">
+                                    <p className={`text-sm font-bold ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>
+                                    {task.externalSource && (
+                                       <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[8px] font-black rounded uppercase">
+                                         {task.externalSource === 'Jira' ? <Trello size={10} className="inline ml-1" /> : null}
+                                         {task.externalSource}
+                                       </span>
+                                    )}
+                                 </div>
                                  <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-2 mt-1">
                                    <span className="flex items-center gap-1"><Users size={12}/> {task.assignedTo}</span>
                                    <span>•</span>
@@ -902,4 +959,56 @@ const Projects = () => {
                     </div>
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الحالة</label>
-                       <select name="status" defaultValue={selectedProject?.status} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-5
+                       <select name="status" defaultValue={selectedProject?.status} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                          {Object.values(ProjectStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                       </select>
+                    </div>
+                 </div>
+
+                 <div className="flex gap-4 pt-4">
+                    <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 py-4 text-slate-600 font-black bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all active:scale-95">إلغاء</button>
+                    <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3">
+                       <Save size={20} /> {selectedProject ? 'حفظ التغييرات' : 'إطلاق وحفظ المشروع'}
+                    </button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
+
+      {isTaskModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
+           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100">
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                 <h3 className="text-xl font-black text-slate-800">إضافة مهمة تنفيذية</h3>
+                 <button onClick={() => setIsTaskModalOpen(false)} className="p-2 text-slate-400 hover:text-rose-500"><X size={24} /></button>
+              </div>
+              <form onSubmit={addTask} className="p-8 space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">وصف المهمة</label>
+                    <input name="title" required placeholder="وصف المهمة بدقة..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500" />
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الساعات المقدرة</label>
+                       <input name="hours" type="number" placeholder="0" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none" />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المسؤول</label>
+                       <input name="assignedTo" required className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none" />
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">تاريخ الاستحقاق</label>
+                    <input name="dueDate" type="date" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500" />
+                 </div>
+                 <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">تأكيد الإضافة</button>
+              </form>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Projects;

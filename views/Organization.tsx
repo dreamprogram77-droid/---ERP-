@@ -42,7 +42,9 @@ import {
   Eye,
   EyeOff,
   Settings2,
-  LayoutDashboard
+  LayoutDashboard,
+  Key,
+  Globe
 } from 'lucide-react';
 
 type Tab = 'departments' | 'roles' | 'subsidiaries' | 'integrations' | 'audit';
@@ -323,21 +325,32 @@ const IntegrationsTab = () => {
     { id: 'git', name: 'GitHub Enterprise', icon: Github, desc: 'مزامنة الكود، التقييمات، ومعدل الالتزام (Commits).', status: 'connected', lastSync: 'منذ 10 دقائق' },
     { id: 'cloud', name: 'AWS Cloud Services', icon: Cloud, desc: 'تتبع تكاليف الحوسبة والاستهلاك السحابي لكل مشروع.', status: 'connected', lastSync: 'منذ ساعة' },
     { id: 'pay', name: 'Stripe Payments', icon: CreditCard, desc: 'بوابة الدفع للفواتير والاشتراكات الشهرية.', status: 'connected', lastSync: 'منذ يومين' },
-    { id: 'jira', name: 'Jira Software', icon: Trello, desc: 'ربط تذاكر العمل والمهام التقنية بجدول المشروع الزمني.', status: 'disconnected', lastSync: 'أبداً' },
-    { id: 'support', name: 'Zendesk Support', icon: MessageSquare, desc: 'استيراد تذاكر الدعم والشكاوى وربطها بسجل العميل.', status: 'disconnected', lastSync: 'أبداً' },
+    { id: 'jira', name: 'Jira Software', icon: Trello, desc: 'مزامنة تذاكر العمل والمهام التقنية بجدول المشروع الزمني.', status: 'disconnected', lastSync: 'أبداً' },
+    { id: 'asana', name: 'Asana Work Management', icon: LayoutDashboard, desc: 'تتبع تقدم المشاريع ومهام الفريق التشغيلية.', status: 'disconnected', lastSync: 'أبداً' },
   ]);
 
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeInt, setActiveInt] = useState<any>(null);
 
-  const handleConnect = (id: string) => {
-    setConnectingId(id);
+  const handleConnectRequest = (int: any) => {
+    setActiveInt(int);
+    setIsModalOpen(true);
+  };
+
+  const handleVerifyConnection = (e: React.FormEvent) => {
+    e.preventDefault();
+    setConnectingId(activeInt.id);
+    setIsModalOpen(false);
+    
     setTimeout(() => {
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
       setIntegrations(prev => prev.map(int => 
-        int.id === id ? { ...int, status: 'connected', lastSync: `متصل في ${timeStr}` } : int
+        int.id === activeInt.id ? { ...int, status: 'connected', lastSync: `متصل في ${timeStr}` } : int
       ));
       setConnectingId(null);
+      alert(`تم ربط ${activeInt.name} بنجاح مع تكنولوجي ERP!`);
     }, 2500);
   };
 
@@ -375,7 +388,7 @@ const IntegrationsTab = () => {
             <p className="text-xs text-slate-500 leading-relaxed mb-6 h-10 overflow-hidden">{int.desc}</p>
             <div className="flex gap-3">
               <button 
-                onClick={() => int.status === 'disconnected' && handleConnect(int.id)}
+                onClick={() => int.status === 'disconnected' ? handleConnectRequest(int) : null}
                 disabled={connectingId === int.id}
                 className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                   int.status === 'connected' 
@@ -407,6 +420,52 @@ const IntegrationsTab = () => {
           </div>
         ))}
       </div>
+
+      {isModalOpen && activeInt && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100">
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                       <activeInt.icon size={24} />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-slate-800">ربط {activeInt.name}</h3>
+                       <p className="text-xs text-slate-500 font-medium mt-1">أدخل مفاتيح الربط لمزامنة البيانات</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-rose-500 rounded-xl transition-all"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleVerifyConnection} className="p-8 space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <Globe size={12} /> رابط مساحة العمل (Workspace URL)
+                    </label>
+                    <input required placeholder={`https://yourcompany.${activeInt.id}.com`} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <Key size={12} /> مفتاح الوصول (API Token)
+                    </label>
+                    <input type="password" required placeholder="Bearer ...." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" />
+                 </div>
+                 
+                 <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                    <p className="text-[10px] text-blue-700 leading-relaxed font-bold">
+                       سيتم مزامنة المهام، وحالات المشاريع، والتعليقات تلقائياً كل ساعة بمجرد تفعيل الربط.
+                    </p>
+                 </div>
+
+                 <div className="flex gap-4 pt-4">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-600 font-black bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all">إلغاء</button>
+                    <button type="submit" className="flex-[2] py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3">
+                       <LinkIcon size={20} /> تفعيل المزامنة
+                    </button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
 
       <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
