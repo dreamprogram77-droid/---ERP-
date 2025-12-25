@@ -15,6 +15,14 @@ export interface Milestone {
   cost: number;
 }
 
+export interface TimeLog {
+  id: string;
+  startTime: string;
+  endTime: string;
+  duration: number; // بالساعات
+  note?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -24,6 +32,7 @@ export interface Task {
   dueDate?: string;
   externalId?: string;
   externalSource?: 'Jira' | 'Asana' | 'GitHub';
+  timeLogs?: TimeLog[];
 }
 
 export interface ProjectResource {

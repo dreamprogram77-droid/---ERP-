@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
@@ -52,7 +51,7 @@ import {
 } from 'lucide-react';
 import { Employee, LeaveRequest } from '../types';
 
-const mockEmployees: Employee[] = [
+const mockEmployeesData: Employee[] = [
   { 
     id: '1', 
     name: 'سارة خالد', 
@@ -360,7 +359,7 @@ const HROverviewSection = () => {
 
         {visibleWidgets.growth && (
           <div className="bg-blue-50 p-8 rounded-[2.5rem] border border-blue-100 animate-in zoom-in-95 duration-300 relative overflow-hidden group">
-            <div className="absolute top-0 left-0 p-6 opacity-10"><LineChart size={80} /></div>
+            <div className="absolute top-0 right-0 p-6 opacity-10"><LineChart size={80} /></div>
             <h3 className="text-sm font-black text-blue-900 mb-8 flex items-center gap-3 relative z-10"><TrendingUp size={20} className="text-blue-600"/> نمو القوة العاملة</h3>
             <div className="space-y-4 relative z-10">
                <div className="flex items-baseline gap-2">
@@ -407,6 +406,7 @@ const HROverviewSection = () => {
         )}
       </div>
 
+      {/* Empty State */}
       {Object.values(visibleWidgets).every(v => v === false) && (
         <div className="py-24 text-center bg-white rounded-[3rem] border border-slate-100 shadow-sm animate-in zoom-in-95 duration-500">
            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
@@ -426,9 +426,17 @@ const HROverviewSection = () => {
   );
 };
 
-const EmployeesTable = ({ onSelect }: { onSelect: (e: Employee) => void }) => {
+const EmployeesTable = ({ employees, onSelect, onToggleStatus }: { 
+  employees: Employee[], 
+  onSelect: (e: Employee) => void,
+  onToggleStatus: (id: string, e: React.MouseEvent) => void 
+}) => {
   const [search, setSearch] = useState('');
   
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(e => e.name.includes(search));
+  }, [employees, search]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -454,12 +462,12 @@ const EmployeesTable = ({ onSelect }: { onSelect: (e: Employee) => void }) => {
               <th className="px-6 py-6">الدور الوظيفي</th>
               <th className="px-6 py-6">الوثائق والإقامة</th>
               <th className="px-6 py-6">الإنتاجية (Impact)</th>
-              <th className="px-6 py-6">الحالة</th>
+              <th className="px-6 py-6 text-center">الحالة</th>
               <th className="px-6 py-6"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {mockEmployees.filter(e => e.name.includes(search)).map((emp) => {
+            {filteredEmployees.map((emp) => {
               const docExpiry = new Date(emp.docExpiry);
               const daysLeft = Math.ceil((docExpiry.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
               const isUrgent = daysLeft < 30;
@@ -494,7 +502,26 @@ const EmployeesTable = ({ onSelect }: { onSelect: (e: Employee) => void }) => {
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-600">نشط</span>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <button 
+                        onClick={(e) => onToggleStatus(emp.id, e)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          emp.status === 'نشط' ? 'bg-emerald-500' : 'bg-slate-200'
+                        }`}
+                      >
+                        <span className="sr-only">تغيير حالة الموظف</span>
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            emp.status === 'نشط' ? 'translate-x-1 rtl:-translate-x-6' : 'translate-x-6 rtl:-translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className={`text-[8px] font-black uppercase tracking-tighter ${
+                        emp.status === 'نشط' ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
+                        {emp.status === 'نشط' ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-5 text-left">
                     <button className="p-2 text-slate-300 group-hover:text-blue-600 transition-colors">
@@ -511,7 +538,7 @@ const EmployeesTable = ({ onSelect }: { onSelect: (e: Employee) => void }) => {
   );
 };
 
-const PayrollSection = () => {
+const PayrollSection = ({ employees }: { employees: Employee[] }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const simulateBankFile = () => {
@@ -560,9 +587,11 @@ const PayrollSection = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {mockEmployees.map((emp) => {
-              const totalAll = Object.values(emp.allowances).reduce((a, b) => a + b, 0);
-              const totalDed = Object.values(emp.deductions).reduce((a, b) => a + b, 0);
+            {employees.map((emp) => {
+              // Fix: Added type assertion to resolve 'unknown' type error in reduce function
+              const totalAll = (Object.values(emp.allowances) as number[]).reduce((a, b) => a + b, 0);
+              // Fix: Added type assertion to resolve 'unknown' type error in reduce function
+              const totalDed = (Object.values(emp.deductions) as number[]).reduce((a, b) => a + b, 0);
               const net = emp.salary + totalAll - totalDed;
               
               return (
@@ -666,15 +695,18 @@ const EmployeeProfile = ({ employee, onBack }: { employee: Employee, onBack: () 
                    </div>
                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                       <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">مجموع البدلات</p>
-                      <p className="text-sm font-black text-emerald-700">{Object.values(employee.allowances).reduce((a,b)=>a+b, 0).toLocaleString()} ر.س</p>
+                      {/* Fix: Added type assertion to resolve 'unknown' type error in reduce function */}
+                      <p className="text-sm font-black text-emerald-700">{(Object.values(employee.allowances) as number[]).reduce((a, b) => a + b, 0).toLocaleString()} ر.س</p>
                    </div>
                    <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
                       <p className="text-[10px] text-rose-400 font-bold uppercase mb-1">الاستقطاعات</p>
-                      <p className="text-sm font-black text-rose-700">{Object.values(employee.deductions).reduce((a,b)=>a+b, 0).toLocaleString()} ر.س</p>
+                      {/* Fix: Added type assertion to resolve 'unknown' type error in reduce function */}
+                      <p className="text-sm font-black text-rose-700">{(Object.values(employee.deductions) as number[]).reduce((a, b) => a + b, 0).toLocaleString()} ر.س</p>
                    </div>
                    <div className="p-4 bg-blue-600 rounded-2xl text-white shadow-lg">
                       <p className="text-[10px] text-blue-100 font-bold uppercase mb-1">الصافي الشهري</p>
-                      <p className="text-sm font-black">{(employee.salary + Object.values(employee.allowances).reduce((a,b)=>a+b, 0) - Object.values(employee.deductions).reduce((a,b)=>a+b, 0)).toLocaleString()} ر.س</p>
+                      {/* Fix: Added type assertions to ensure operands are numbers in arithmetic expression */}
+                      <p className="text-sm font-black">{(employee.salary + (Object.values(employee.allowances) as number[]).reduce((a, b) => a + b, 0) - (Object.values(employee.deductions) as number[]).reduce((a, b) => a + b, 0)).toLocaleString()} ر.س</p>
                    </div>
                 </div>
              </div>
@@ -961,21 +993,35 @@ const LeavesSection = () => (
 const Team = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'directory' | 'payroll' | 'leaves'>('overview');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employeesList, setEmployeesList] = useState<Employee[]>(mockEmployeesData);
+
+  const toggleEmployeeStatus = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // منع فتح الملف الشخصي عند النقر على التبديل
+    setEmployeesList(prev => prev.map(emp => {
+      if (emp.id === id) {
+        return { ...emp, status: emp.status === 'نشط' ? 'غير نشط' : 'نشط' };
+      }
+      return emp;
+    }));
+  };
 
   const stats = useMemo(() => {
-    const totalPayroll = mockEmployees.reduce((acc, emp) => {
-      const totalAll = Object.values(emp.allowances).reduce((a, b) => a + b, 0);
-      const totalDed = Object.values(emp.deductions).reduce((a, b) => a + b, 0);
+    const totalPayroll = employeesList.reduce((acc, emp) => {
+      // Fix: Added type assertion to resolve 'unknown' type error in reduce function
+      const totalAll = (Object.values(emp.allowances) as number[]).reduce((a, b) => a + b, 0);
+      // Fix: Added type assertion to resolve 'unknown' type error in reduce function
+      const totalDed = (Object.values(emp.deductions) as number[]).reduce((a, b) => a + b, 0);
+      // Fix: Ensured operands are numbers to resolve arithmetic operation error
       return acc + (emp.salary + totalAll - totalDed);
     }, 0);
 
     return {
-      workforce: mockEmployees.length + 22,
+      workforce: employeesList.length + 22,
       turnover: '4.2%',
       pendingLeaves: mockLeaves.filter(l => l.status === 'pending').length,
       payrollCost: totalPayroll
     };
-  }, []);
+  }, [employeesList]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -1034,8 +1080,8 @@ const Team = () => {
           ) : (
             <>
               {activeTab === 'overview' && <HROverviewSection />}
-              {activeTab === 'directory' && <EmployeesTable onSelect={setSelectedEmployee} />}
-              {activeTab === 'payroll' && <PayrollSection />}
+              {activeTab === 'directory' && <EmployeesTable employees={employeesList} onSelect={setSelectedEmployee} onToggleStatus={toggleEmployeeStatus} />}
+              {activeTab === 'payroll' && <PayrollSection employees={employeesList} />}
               {activeTab === 'leaves' && <LeavesSection />}
             </>
           )}
