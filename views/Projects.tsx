@@ -408,6 +408,7 @@ const Projects = () => {
       setAllProjects(allProjects.map(p => p.id === selectedProject.id ? updated : p));
       setSelectedProject(updated);
     } else {
+      // Fix: Added missing properties projectManager, technicalLead, and qaEngineer to satisfy Project interface
       const newProj: Project = {
         id: 'pj' + Date.now(),
         name: updatedData.name || '',
@@ -420,6 +421,9 @@ const Projects = () => {
         budget: updatedData.budget || 0,
         progress: 0,
         team: ['1'],
+        projectManager: 'أحمد محمد',
+        technicalLead: 'سارة خالد',
+        qaEngineer: 'فهد الأحمد',
         milestones: [],
         tasks: [],
         resources: [],
